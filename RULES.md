@@ -203,3 +203,274 @@ func main() {
         - “The inner function remembers and can use variables from the outer function, even after the outer function has finished running.”
     - Nowhere does the function call itself, so there’s no recursion.
 - Function **currying** is a concept from **functional programming** and involves **partial application of functions**. It allows a function with multiple arguments to be transformed into a sequence of functions, each taking a single argument.
+# Struct
+- Go is not an object-oriented language. 
+- A struct is:
+```Go
+type car struct {
+	brand      string
+	model      string
+	doors      int
+	mileage    int
+}
+```
+
+- How to check if a string is empty in GO? 
+
+    - if `mToSend.recipient.name == ""` or `len(mToSend.recipient.name) > 0`
+- An **anonymous struct** is just like a normal struct, but it is defined without a name and therefore cannot be referenced elsewhere in the code.
+    -  How? Just **instantiate the instance** immediately using a second pair of brackets after declaring the type:
+    ```Go
+    myCar := struct {
+    brand string
+    model string
+    } {
+    brand: "Toyota",
+    model: "Camry",
+    }
+    ```
+- You can even nest anonymous structs as fields within other structs:
+```Go
+type car struct {
+  brand string
+  model string
+  doors int
+  mileage int
+  // wheel is a field containing an anonymous struct
+  wheel struct {
+    radius int
+    material string
+  }
+}
+
+var myCar = car{
+  brand:   "Rezvani",
+  model:   "Vengeance",
+  doors:   4,
+  mileage: 35000,
+  wheel: struct {
+    radius   int
+    material string
+  }{
+    radius:   35,
+    material: "alloy",
+  },
+}
+```
+
+- Keep in mind, Go doesn't support classes or inheritance in the complete sense, but **embedded structs** are a way to elevate and share fields between struct definitions:
+```Go
+type car struct {
+  brand string
+  model string
+}
+type truck struct {
+  // "car" is embedded, so the definition of a "truck" now also additionally contains all of the fields of the car struct
+  car
+  bedSize int
+}
+```
+- The difference to nested structs here is: we can directly access the top-level struct, without needing to mention the top-level struct again:
+ ```Go
+lanesTruck := truck{
+  bedSize: 10,
+  car: car{
+    brand: "Toyota",
+    model: "Tundra",
+  },
+}
+fmt.Println(lanesTruck.brand) // Without saying lanesTruck.car.brand, we directly access model and brand, as if it were a field from lanesTruck directly
+fmt.Println(lanesTruck.model) // Instead of lanesTruck.car.model
+```
+- While Go is not object-oriented, it does support **methods** that can be defined on structs. Methods are just functions that have a **receiver**. A receiver is just **a special kind of function parameter** that syntactically **goes before the name of the function** `func (receiver) name(params) type {}`
+```Go
+type rect struct {
+  width int
+  height int
+}
+// area has a receiver of (r rect)
+// rect is the struct
+// r is the placeholder
+func (r rect) area() int {
+  return r.width * r.height
+}
+var r = rect{
+  width: 5,
+  height: 10,
+}
+fmt.Println(r.area())
+// prints 50
+```
+- Field names in structs follow the Go convention: fields whose name starts with a **lower** case letter are **only visible to code** in the same package, whereas those whose name starts with an **upper** case letter are **visible in other packages**.
+## Memory Layout
+- In Go, structs sit in memory in a contiguous block, with fields placed one after another as defined in the struct. The order of fields in a struct can have a big impact on memory usage. If you order the fields poorly (from smallest to largest), Go adds some **padding** to make up for the size difference. It's done for execution speed, but it can lead to increased memory usage. If you have a specific reason to be concerned about memory usage, aligning the fields by size **(largest to smallest)** can help.
+- Empty structs are used in Go as a unary value:
+```Go
+// anonymous empty struct type
+empty := struct{}{}
+
+// named empty struct type
+type emptyStruct struct{}
+empty := emptyStruct{}
+```
+
+![alt text](memory_usage.png)
+## Instantiation
+### Instantiation Type 1: Struct Literals with Field Names
+This is the recommended and most common way to instantiate a struct when you want to set specific values for its fields.
+
+`Syntax: varName := MyStruct{FieldName1: value1, FieldName2: value2}`
+
+Key Characteristics:
+- Clarity: You explicitly name each field, making the code very readable and easy to understand which value goes to which field.
+Order doesn't matter: You can list the fields in any order.
+- Partial Initialization: You can choose to initialize only a subset of the fields. Any fields you omit will automatically be assigned their zero value (e.g., 0 for int, "" for string, false for bool).
+- Flexibility: Great for creating a new struct value with specific initial data.
+```Go
+Example:
+
+type Person struct {
+    Name string
+    Age  int
+    City string
+}
+
+// Full initialization
+p1 := Person{Name: "Alice", Age: 30, City: "New York"}
+
+// Partial initialization (City will be "")
+p2 := Person{Name: "Bob", Age: 25}
+```
+
+### Instantiation Type 2: Struct Literals without Field Names (Positional Initialization)
+
+This method is less common and can be error-prone. It relies on the order of fields.
+
+`Syntax: varName := MyStruct{value1, value2, value3}`
+Key Characteristics:
+- Order is critical: The values must be provided in the exact order the fields are declared in the struct definition.
+All fields required: You must provide a value for every field in the struct.
+- Error-Prone: If you change the order of fields in the struct definition, or if you forget a value, your code will compile with an error. This is exactly what you discovered! If you try to provide only one value when there are multiple fields, Go doesn't know which field it corresponds to, hence the error.
+Example:
+```Go
+type Item struct {
+    ID    int
+    Name  string
+    Price float64
+}
+
+// Correct usage (all fields in order)
+item1 := Item{101, "Sword", 50.0}
+
+// Incorrect usage (will cause a compile-time error)
+// item2 := Item{202, "Shield"} // Error: too few values in struct literal
+```
+
+## Nested and Embedded instantiations
+
+Consider these structs:
+```Go
+package main
+
+import "fmt"
+
+type Address struct {
+	Street  string
+	City    string
+	ZipCode string
+}
+
+type Person struct {
+	Name    string
+	Age     int
+	Address Address // Nested struct
+	Contact // Embedded struct (anonymous field)
+}
+
+type Contact struct {
+	Email string
+	Phone string
+}
+```
+
+### 1. Nested Struct Instantiation (e.g., Address inside Person)
+You use a struct literal for the Person, and then inside that literal, you use another struct literal for the Address field.
+```Go
+func main() {
+	// Instantiation using Struct Literals with Field Names (Type 1)
+	p1 := Person{
+		Name: "Alice",
+		Age:  30,
+		Address: Address{ // <--- Here's the nested struct instantiation
+			Street:  "123 Magic Lane",
+			City:    "Enchanted Forest",
+			ZipCode: "90210",
+		},
+		// Contact fields will be zero-valued for now
+	}
+	fmt.Printf("Person with nested struct: %+v\n", p1)
+
+	// You could also partially initialize the nested struct:
+	p2 := Person{
+		Name: "Bob",
+		Address: Address{ // Only setting Street, City and ZipCode will be zero-valued
+			Street: "456 Wizard Way",
+		},
+	}
+	fmt.Printf("Person with partially initialized nested struct: %+v\n", p2)
+}
+```
+
+### 2. Embedded Struct Instantiation (e.g., Contact inside Person)
+This is where it gets interesting because of how Go's embedding works. When you embed a struct, its fields are "**promoted**" to the outer struct. This gives you two main ways to initialize them:
+
+#### a. Initializing the Embedded Struct Directly within the Outer Struct Literal
+You treat the embedded struct as a field with its type name.
+```Go
+func main() {
+	p3 := Person{
+		Name: "Charlie",
+		Age:  40,
+		Address: Address{
+			Street: "789 Spell Rd",
+			City:   "Mystic Town",
+		},
+		Contact: Contact{ // <--- Initializing the embedded struct directly
+			Email: "charlie@example.com",
+			Phone: "555-1111",
+		},
+	}
+	fmt.Printf("Person with embedded struct initialized directly: %+v\n", p3)
+}
+```
+
+#### b. Initializing Promoted Fields of the Embedded Struct
+Because the fields of Contact (Email, Phone) are promoted to Person, you can initialize them *as if they were direct fields of Person.*
+```Go
+func main() {
+	p4 := Person{
+		Name:  "Dana",
+		Age:   25,
+		Email: "dana@example.com", // <--- Initializing promoted field directly
+		Phone: "555-2222",     // <--- Initializing promoted field directly
+		// Address fields will be zero-valued for now
+	}
+	fmt.Printf("Person with promoted fields initialized: %+v\n", p4)
+
+	// What if you use both? The explicit 'Contact' field takes precedence
+	p5 := Person{
+		Name:    "Eve",
+		Email:   "eve_promoted@example.com",
+		Contact: Contact{Email: "eve_direct@example.com", Phone: "555-3333"},
+	}
+	// The Email from 'Contact' will be "eve_direct@example.com"
+	fmt.Printf("Person with both promoted and direct initialization: %+v\n", p5)
+	fmt.Printf("Eve's email: %s\n", p5.Email) // Accesses the promoted field
+}
+```
+
+Key Takeaways:
+
+- For both nested and embedded structs, you're fundamentally still using the **struct literal syntax ({Field: Value})** to create and populate them.
+- The main difference for embedded structs is the added convenience of being able to initialize their fields directly through the "outer" struct **as if they were its own fields**, thanks to **field promotion**.
+- The "Type 2" **(positional) instantiation** is still an option for nested/embedded structs if you know the order of their fields, but it carries the same risks of being brittle and hard to read.

@@ -203,7 +203,7 @@ func main() {
         - “The inner function remembers and can use variables from the outer function, even after the outer function has finished running.”
     - Nowhere does the function call itself, so there’s no recursion.
 - Function **currying** is a concept from **functional programming** and involves **partial application of functions**. It allows a function with multiple arguments to be transformed into a sequence of functions, each taking a single argument.
-# Struct
+r# Struct
 - Go is not an object-oriented language. 
 - A struct is:
 ```Go
@@ -301,6 +301,7 @@ var r = rect{
 fmt.Println(r.area())
 // prints 50
 ```
+- When you define a method with a receiver, that method automatically has access to all the fields of that specific instance
 - Field names in structs follow the Go convention: fields whose name starts with a **lower** case letter are **only visible to code** in the same package, whereas those whose name starts with an **upper** case letter are **visible in other packages**.
 ## Memory Layout
 - In Go, structs sit in memory in a contiguous block, with fields placed one after another as defined in the struct. The order of fields in a struct can have a big impact on memory usage. If you order the fields poorly (from smallest to largest), Go adds some **padding** to make up for the size difference. It's done for execution speed, but it can lead to increased memory usage. If you have a specific reason to be concerned about memory usage, aligning the fields by size **(largest to smallest)** can help.
@@ -474,3 +475,75 @@ Key Takeaways:
 - For both nested and embedded structs, you're fundamentally still using the **struct literal syntax ({Field: Value})** to create and populate them.
 - The main difference for embedded structs is the added convenience of being able to initialize their fields directly through the "outer" struct **as if they were its own fields**, thanks to **field promotion**.
 - The "Type 2" **(positional) instantiation** is still an option for nested/embedded structs if you know the order of their fields, but it carries the same risks of being brittle and hard to read.
+
+# Interfaces
+- Interfaces are just **collections of method signatures**.
+- Allows you to focus on what a type does, rather than how it's built.
+- A type **implements** an interface if it has methods that match the interface's method signatures.
+- **Interface** is ONLY used for **polymorphism** and doesn't provide any features
+- This is different from **abstraction**, where we write an abstract class (with abstract methods), we, as the **super-class** can also provide a few features for the sub-class -> **Inheritance**:
+`abstract class Test1{};` which includes something like `abstract public void meth1()` -> `class Test2 extends Test1{};` is now **concrete**, because it overwrite all methods from super-class, otherwise it will also become abstract.
+- We can have a super-class reference and an object of the sub-class `Test1 t = new Test2();`
+- Although this is an inheritance, it has only achieved **polymorphism**. So, we could instead only use an **Interface**:
+`interface Test1{};` which includes something like `void meth1()` – No need to write abstract public, because that's what they already are! -> `class Test2 implements Test1{};` now overwrites all the methods. 
+- In Go, unlike Java, we don't need the "implements" keyword. We just take the interfaces inside our method and complete them, as if they were a method for our struct: `func (receiver) name(params) type {}`. Implicit interfaces decouple the definition of an interface from its implementation. **Decouple** means:
+    - The person who writes the type doesn’t need to know about the interface.
+    - The person who writes the interface doesn’t need to touch the type.
+- When **a type implements an interface**, it can then be **used as that interface type**: For example, you have an interface called `X` and you implement it inside struct `Y`. You can from now on, refer to your struct type `Y` as type `X`. The `X` interface says: "Any type that has all my methods can be an `X`".
+- A type "implements" an interface if it has **all** of the methods of the given interface defined on it.
+- A type can implement **any number** of interfaces in Go. For example, the **empty interface**, **interface{}**, is always implemented by **every type** because it has **no requirements**.
+## Type Assertion
+- When working with interfaces in Go, every once-in-awhile you'll need **access to the underlying type of an interface value**. You can **cast** an interface to its underlying type using a **type assertion**:
+```Go
+func getExpenseReport(e expense) (string, float64) {
+    // At this point, e could be email, sms, OR invalid
+    // You need to figure out WHICH ONE it actually is
+    
+    em, ok := e.(email)  // Is it an email?
+    if ok {
+        return em.toAddress, em.cost()  // Only email has toAddress
+    }
+    
+    s, ok := e.(sms)  // Is it an sms?
+    if ok {
+        return s.toPhoneNumber, s.cost()  // Only sms has toPhoneNumber
+    }
+    
+    // If it's neither, it must be invalid (or some other type)
+    return "", 0.0
+}
+```
+- The syntax `em, ok := e.(email)` is called a **type assertion** in Go. Here's what each part does:
+    - `e` - This is your interface value (in your case, an expense)
+    - `.(email)` - This is the type assertion, asking "is e actually an email?"
+    - `em` - This receives the underlying email value if the assertion succeeds
+    - `ok` - This is a boolean that tells you whether the assertion succeeded (true) or failed (false)
+    1. Go checks if the concrete type stored in the interface `e` is actually an `email`
+    2. If it is an `email`
+        - `em` gets the actual email value (so you can access fields like `em.toAddress`)
+        - `ok` is set to `true`
+    3. If it is not an `email`:
+        - `em` gets the zero value of the `email` type
+        - `ok` is set to `false`
+## Type Switches
+- A type switch makes it easy to do several type assertions in a series. A type switch is similar to a regular switch statement, but the cases specify **types** instead of values:
+```Go
+func getExpenseReport(e expense) (string, float64) {
+	switch v := e.(type) {
+		case email:
+			return v.toAddress, v.cost()
+		case sms:
+			return v.toPhoneNumber, v.cost()
+		default:
+			return "", 0.0
+	}
+}
+```
+## Embedded Interface
+```Go
+type firetruck interface {
+	car
+	HoseLength() int
+}
+```
+It inherits the required methods from `car` as an embedded interface and adds one additional required method to make the `car` a `firetruck`.

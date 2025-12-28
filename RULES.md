@@ -76,6 +76,12 @@ func getCreator(os string) string {
     return creator
 }
 ```
+- Variables declared inside a block (with := or var) only live inside that block and its nested blocks.
+    - if { ... }
+    - for { ... }
+    - switch { ... }
+    - Plain { ... } braces
+    
 # Functions
 - `func sub(x int, y int) int` is known as the **function signature** and accepts two integer parameters and returns another integer.
 - When multiple arguments are of the same type, and are next to each other in the function signature, the type only needs to be declared after the last argument:
@@ -547,3 +553,79 @@ type firetruck interface {
 }
 ```
 It inherits the required methods from `car` as an embedded interface and adds one additional required method to make the `car` a `firetruck`.
+# Errors
+- Go programs express errors with `error` values. An `Error` is any type that implements the simple built-in `error` interface:
+```Go
+type error interface {
+    Error() string
+}
+```
+- When something can go wrong in a function, that function should return an `error` as its **last return value**.
+- Any code that calls a function that can return an `error` should handle errors by testing whether the error is `nil`.
+- Because errors are just interfaces, we can build our own custom types that implement the `error` interface. 
+- Keep in mind that the way Go handles errors is fairly unique. Most languages treat errors as something special and different. For example, Python raises exception types and JavaScript throws and catches errors. In Go, an `error` is just another value that we handle like any other value - however we want! There aren't any special keywords for dealing with them.
+
+## custom error type vs errors.New
+### Approach 1: Custom error type
+
+```Go
+type divideError struct {
+	dividend float64
+}
+```
+This is just a normal Go struct.
+Then I made it satisfy the error interface:
+```Go
+
+func (d divideError) Error() string {
+	return fmt.Sprintf("can not divide %v by zero", d.dividend)
+}
+```
+The error interface is:
+```Go
+
+type error interface {
+	Error() string
+}
+```
+So any type with an `Error()` string method can be used as an error.
+When I do:
+
+`return 0, divideError{dividend: dividend}`
+
+Go stores a value of type `divideError` inside an interface value of type `error`.
+Under the hood, an interface value holds:
+
+- a concrete type (divideError)
+- a value of that type (my struct)
+This lets me later do things like:
+```Go
+if e, ok := err.(divideError); ok {
+    // you can inspect e.dividend
+}
+```
+### Approach 2: `errors.New("no dividing by 0")`
+`errors.New` returns a value of type error.
+Under the hood in the standard library, it looks roughly like this:
+```Go
+func divide(x, y float64) (float64, error) {
+	if y == 0 {
+		var err error = errors.New("no dividing by 0")
+		return 0, err
+	}
+	return x / y, nil
+}
+```
+
+So `errors.New` is just returning a simple struct that holds a string.
+No extra fields, no custom data, no type-specific behavior—just a message.
+
+So: `errors.New` = lightweight, **message-only** error.
+
+## Panic/Recover
+Panic and recover shouldn't be used instead of errors, because:
+1. Crash control flow: panic jumps out of normal execution, making code harder to reason about and debug.
+2. Hide real error handling: Using recover instead of returning error values breaks Go’s idiomatic style and makes APIs unclear.
+3. Are easy to misuse: It’s tempting to treat panic/recover like exceptions, which leads to fragile, hard‑to‑maintain code.
+
+- If you want your program to cleanly exit in an unrecoverable way, use `log.Fatal()`.

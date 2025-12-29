@@ -81,7 +81,7 @@ func getCreator(os string) string {
     - for { ... }
     - switch { ... }
     - Plain { ... } braces
-    
+
 # Functions
 - `func sub(x int, y int) int` is known as the **function signature** and accepts two integer parameters and returns another integer.
 - When multiple arguments are of the same type, and are next to each other in the function signature, the type only needs to be declared after the last argument:
@@ -629,3 +629,24 @@ Panic and recover shouldn't be used instead of errors, because:
 3. Are easy to misuse: It’s tempting to treat panic/recover like exceptions, which leads to fragile, hard‑to‑maintain code.
 
 - If you want your program to cleanly exit in an unrecoverable way, use `log.Fatal()`.
+
+# Loops
+- The basic loop in Go is written in standard C-like syntax, without the parantheses:
+```Go
+for INITIAL; CONDITION; AFTER{
+}
+```
+## While in GO is a for-loop that only has a CONDITION:
+```GO
+for CONDITION {
+  // do some stuff while CONDITION is true
+}
+```
+- If you omit the condition, you will get an infinite loop.
+
+- Whenever we want to change the control flow of a loop we can use the `continue` and `break` keywords.
+## continue
+- The `continue` keyword stops the current iteration of a loop and continues to the next iteration. `continue` is a powerful way to use the guard clause pattern within loops.
+## break
+- The `break` keyword stops the current iteration of a loop and exits the loop.
+

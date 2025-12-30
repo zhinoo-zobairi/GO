@@ -209,7 +209,8 @@ func main() {
         - “The inner function remembers and can use variables from the outer function, even after the outer function has finished running.”
     - Nowhere does the function call itself, so there’s no recursion.
 - Function **currying** is a concept from **functional programming** and involves **partial application of functions**. It allows a function with multiple arguments to be transformed into a sequence of functions, each taking a single argument.
-r# Struct
+
+# Struct
 - Go is not an object-oriented language. 
 - A struct is:
 ```Go
@@ -649,4 +650,146 @@ for CONDITION {
 - The `continue` keyword stops the current iteration of a loop and continues to the next iteration. `continue` is a powerful way to use the guard clause pattern within loops.
 ## break
 - The `break` keyword stops the current iteration of a loop and exits the loop.
+- Go provides syntactic sugar **Range** to iterate easily over elements of a slice:
+```Go
+for INDEX, ELEMENT := range SLICE {
+}
+```
+- The element is a copy of the value at that index.
+# Slices
 
+* Go has two related sequence types:
+
+  * **Array**: fixed-size container that physically stores its elements.
+  * **Slice**: dynamic, runtime-sized view over an underlying array.
+
+* Arrays matter because slices are built on top of arrays.
+
+* Arrays are **fixed-size** collections of the **same type**.
+
+* The array size is part of the type, not just metadata.
+
+* Array type syntax is **`[N]T`**, and `N` must be a **compile-time constant**.
+
+* Consequences:
+
+  * `[3]int` and `[4]int` are different types.
+  * You cannot use runtime values like `len(messages)` inside `[N]T`.
+
+* Array examples:
+
+  ```Go
+  var myInts [10]int
+  primes := [6]int{2, 3, 5, 7, 11, 13}
+  ```
+
+* Fixed-size constraint: `[10]int` cannot grow to 11 elements.
+
+* Slice type syntax is **`[]T`** with empty brackets, meaning length is not part of the type.
+
+* A slice is a flexible view with runtime-controlled length.
+
+* The zero value of a slice is **`nil`**.
+
+* Slices are designed for sizes known **at runtime**:
+
+  * `length := len(messages)` is runtime information.
+  * You can create a slice with that length.
+  * You cannot create an array with that length.
+
+* Slicing an array creates a view into a region of the array:
+
+  ```Go
+  primes := [6]int{2, 3, 5, 7, 11, 13}
+  mySlice := primes[1:4]
+  ```
+
+* Slicing syntax: `arrayName[lowIndex:highIndex]`
+
+  * `lowIndex` is inclusive
+  * `highIndex` is exclusive
+
+* Internals that explain most slice behavior:
+
+  * A slice is a small header containing:
+
+    * a pointer to the first element in the underlying array
+    * the length
+    * the capacity
+  * Passing a slice to a function copies the header, but the pointer still targets the same underlying array, so element updates are shared.
+
+* Two boundaries you must keep clear:
+
+  * Mutating elements vs changing the slice header:
+
+    * `s[i] = ...` mutates the underlying array and is visible to other slices sharing it.
+    * `s = s[:2]` only changes the local slice header, not the caller’s slice header.
+  * `append` can break sharing:
+
+    * If capacity is sufficient, `append` grows within the same underlying array.
+    * If capacity is insufficient, Go allocates a new underlying array and copies elements, so the returned slice may point somewhere else.
+
+* Creating slices:
+
+  * `make([]T, len, cap)` creates a slice with allocated backing storage.
+  * Capacity is usually omitted and defaults to length.
+  * Elements are initialized to the zero value.
+
+  ```Go
+  costs := make([]float64, length)
+  ```
+
+  * A slice literal creates a slice with initial values:
+
+  ```Go
+  mySlice := []string{"I", "love", "go"}
+  fmt.Println(len(mySlice))
+  fmt.Println(cap(mySlice))
+  mySlice[0] = "you"
+  ```
+
+* Empty vs nil slices:
+
+  * `var s []T` is a **nil slice**.
+  * `[]T{}` is an **empty, non-nil slice** (len 0, but initialized).
+  * For a nil slice, `len(s)` and `cap(s)` both return 0.
+
+* One-line rule (fast recall):
+
+  * Brackets with a number: **array**, number must be **compile-time**: `[N]T`
+  * Empty brackets: **slice**, size can be **runtime**: `[]T`
+
+* Variadic functions and slices:
+
+  * A variadic parameter `(...T)` is received inside the function as a `[]T`.
+  * `fmt.Println()` and `fmt.Sprintf()` are variadic.
+  * The spread operator `...` expands a slice into variadic arguments at the call site.
+
+* `append` fundamentals:
+
+  * `append` grows a slice dynamically and returns the updated slice, so you typically reassign:
+
+    * `s = append(s, x)`
+  * If the underlying array is too small, `append` allocates a new one and the returned slice points to it.
+
+* Learning from the `filterMessages` mistake:
+
+  * If you plan to **append**, your slice should start with **length 0**.
+  * `make([]T, len)` creates a slice that already contains `len` zero values, so appending adds after them.
+  * Use:
+
+    * `make([]T, 0, cap)` when building via `append`
+    * `make([]T, len)` when you will assign by index (`s[i] = ...`)
+  * Correct pattern:
+
+  ```go
+  func filterMessages(messages []Message, filterType string) []Message {
+      filtered := make([]Message, 0, len(messages))
+      for _, msg := range messages {
+          if msg.Type() == filterType {
+              filtered = append(filtered, msg)
+          }
+      }
+      return filtered
+  }
+  ```

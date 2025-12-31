@@ -655,7 +655,10 @@ for CONDITION {
 for INDEX, ELEMENT := range SLICE {
 }
 ```
-- The element is a copy of the value at that index.
+- The element is a copy of the value at that index. So:
+    - Use for _, v := range slice when you only need to **read**.
+    - Use for i := range slice when you need to **modify elements in place**.
+
 # Slices
 
 * Go has two related sequence types:
@@ -780,6 +783,7 @@ for INDEX, ELEMENT := range SLICE {
 
     * `make([]T, 0, cap)` when building via `append`
     * `make([]T, len)` when you will assign by index (`s[i] = ...`)
+    * **empty literal**: `filtered := []Message{}`
   * Correct pattern:
 
   ```go
@@ -793,3 +797,30 @@ for INDEX, ELEMENT := range SLICE {
       return filtered
   }
   ```
+# Maps
+- Maps are a data structure that provides **key->value** mapping.
+- The zero value of a map is `nil`.
+- We can create a map by using a literal or by using the `make()` function: 
+- Only Declaring: `newMap := make(map[KeyType]ValueType)`
+- Declare and define: `newMap := map[KeyType]ValueType{...}`
+- The `len()` function works on a map, it returns the total number of key/value pairs.
+## Mutations
+- Insert an element `m[key] = elem`
+- Get an element `elem = m[key]`
+    - An attempt to fetch a map value with a key that is not present in the map will return the zero value for the type of the entries in the map. 
+- Delete an Element `delete(m, key)`
+- Check If a **Key** Exists `elem, ok := m[key]`:
+    -  This is called the **“comma ok”** idiom.
+    - If key is in `m`, then `ok` is `true` and `elem` is the value as expected.
+    - If key is not in the map, then `ok` is `false` and `elem` is the zero value for the map's element type.
+- Any type can be used as the value in a map, but keys are more restrictive.
+- Slices, maps, and functions cannot be compared using `==`, and may not be used as map keys.
+- You can check if a key is already present in a map by using the **second return value** from the index operation:
+```Go
+if _, ok := names["Denna"]; !ok {
+    // if the key doesn't exist yet,
+    // append the name to the missingNames slice
+    missingNames = append(missingNames, "Denna")
+}
+```
+- Like slices, maps hold references to an underlying data structure. If you pass a map to a function that changes the contents of the map, the changes will be visible in the caller.

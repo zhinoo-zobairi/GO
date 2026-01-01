@@ -824,3 +824,67 @@ if _, ok := names["Denna"]; !ok {
 }
 ```
 - Like slices, maps hold references to an underlying data structure. If you pass a map to a function that changes the contents of the map, the changes will be visible in the caller.
+
+# The pattern I must internalize (this is the real lesson)
+```Go
+value, ok := map[key]
+if !ok {
+    value = make(...)
+    map[key] = value
+}
+value[something]++
+```
+1. pull the variable into the outer scope
+2. conditionally initialize (if it doesn't exist, create it)
+3. then use it unconditionally
+    - Variables declared with := exist only inside the block {} where they are declared.
+        - Blocks include:
+            - if { }
+            - for { }
+            - function bodies
+# Pointers
+- Access the fileds of a struct pointer like you'd normally do with a **selector operator**
+- You cannot mutate the caller’s variable directly **without a pointer**. But you can achieve the same end result by **returning the new value** and **assigning it back in the caller**.
+- A receiver type on a method can be a pointer. Methods with pointer receivers can modify the value to which the receiver points. Since methods often need to modify their receiver, **pointer receivers are more common than value receivers**. 
+- Methods with pointer receivers *don't require that a pointer is used to call the method*. The pointer will automatically be derived from the value.
+```Go
+type car struct {
+	color string
+}
+
+func (c *car) setColor(color string) {
+	c.color = color
+}
+
+func main() {
+	c := car{
+		color: "white",
+	}
+	c.setColor("blue")
+	fmt.Println(c.color)
+	// prints "blue"
+}
+```
+**ABER**
+```Go
+type car struct {
+	color string
+}
+
+func (c car) setColor(color string) {
+	c.color = color
+}
+
+func main() {
+	c := car{
+		color: "white",
+	}
+	c.setColor("blue")
+	fmt.Println(c.color)
+	// prints "white"
+}
+```
+- Occasionally, new Go developers hear "pointers don't pass copies" and take that to a logical extreme, concluding:
+>Pointers are always faster because copying is slow. I'll always use pointers!
+- Interestingly, **local non-pointer** variables are generally faster to pass around than pointers because they're **stored on the stack**, which is faster to access than the heap. Even though copying is involved, the stack is so fast that it's no big deal.
+- Once the value becomes **large enough that copying is the greater problem**, it can be worth **using a pointer** to avoid copying. That value will probably go to the **heap**, so the gain from avoiding copying needs to be greater than the loss from moving to the heap.

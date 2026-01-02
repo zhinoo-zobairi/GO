@@ -84,6 +84,7 @@ func getCreator(os string) string {
 
 # Functions
 - `func sub(x int, y int) int` is known as the **function signature** and accepts two integer parameters and returns another integer.
+- Functions with names starting with a lowercase letter are **unexported** and **private** to the package, while functions starting with an uppercase letter are exported and can be accessed externally.
 - When multiple arguments are of the same type, and are next to each other in the function signature, the type only needs to be declared after the last argument:
 ```Go
 func addToDatabase(hp, damage int, name string, level int) {
@@ -888,3 +889,113 @@ func main() {
 >Pointers are always faster because copying is slow. I'll always use pointers!
 - Interestingly, **local non-pointer** variables are generally faster to pass around than pointers because they're **stored on the stack**, which is faster to access than the heap. Even though copying is involved, the stack is so fast that it's no big deal.
 - Once the value becomes **large enough that copying is the greater problem**, it can be worth **using a pointer** to avoid copying. That value will probably go to the **heap**, so the gain from avoiding copying needs to be greater than the loss from moving to the heap.
+
+# Packages
+- Go programs are organized into **packages**. A package is a **directory of Go code** that's **all compiled together**. Functions, types, variables, and constants defined in one source file are visible to all other source files within the same package (directory).
+- A package named "main" has an entrypoint at the `main()` function. A `main` package is compiled into an executable program.
+- A package by any other name is a "**library package**". Libraries have no entry point. Libraries simply export functionality that can be used by other packages.
+- By convention, a package's name is the same as the last element of its import path. For instance, the math/rand package comprises files that begin with `package rand`.
+- A **directory of Go code** can have **at most one** package. All .go files in a single directory must all belong to the same package. If they don't, an error will be thrown by the compiler. This is true for main and library packages alike.
+- In Go, every package you import is identified by an **import path** string, like: `import "github.com/google/go-cmp/cmp"`
+- That string is built from 2 parts:
+		1. Module path: where the module “lives” (and the prefix of all its packages), e.g. `github.com/google/go-cmp`
+  		2. Package subdirectory inside that module: e.g. `cmp`
+- A package should never have specific knowledge about a particular application that uses it.
+## Modules
+- A **repository** contains **one or more modules** (typically one module). A **module** is **a collection of Go packages** that are released together. Each package consists of one or more **Go source files** in a single directory.
+- A file named **go.mod** at the **root** of a project declares the module.
+- The module path is just the **import path prefix for all packages within the module**.
+- Packages in the standard library do not have a module path prefix.
+## Go Commands
+- The `go run` command quickly compiles and runs a Go package. The compiled binary is **not** saved in your working directory. It's typically used to do local testing, scripting and debugging.
+- The `go build` command compiles go code into a single, statically linked executable program. One of the beauties of Go is that you always `go build` for production, and because the output is a **statically compiled binary**, you can ship it to production or end users without them needing the Go toolchain installed.
+- The `go install` command compiles and installs a package or packages on your local machine for personal usage. It installs the package's compiled binary in the **GOBIN** directory.
+# Channels
+* **Concurrency** means the ability to make progress on **multiple tasks within the same time window**, even if they are not all executing at the exact same CPU moment.
+
+* The opposite of concurrency is **sequential (synchronous) execution**, where code runs strictly line by line and one task must fully finish before the next can start.
+
+* Concurrency is **not the same as parallelism**:
+
+  * **Concurrency** is about *structure* (how tasks are organized and interleaved).
+  * **Parallelism** is about *hardware execution* (tasks literally running at the same time on multiple CPU cores).
+
+* On a **single-core CPU**, concurrency is achieved by **rapid task switching** (time slicing).
+
+* On a **multi-core CPU**, concurrency may become **true parallelism**, where tasks run simultaneously.
+
+* Importantly, **the same Go code** works in both cases; the runtime adapts to available hardware.
+
+* Go was designed with concurrency as a **core language feature**, not a library add-on.
+
+* Concurrency in Go is expressed using the `go` keyword:
+
+  * `go f()` means: *start this function concurrently and do not wait for it here*.
+
+* Using `go` spawns a **goroutine**, which is:
+
+  * a lightweight, runtime-managed execution unit
+  * much cheaper than an OS thread
+  * scheduled by the Go runtime, not the operating system directly
+
+* A common Go pattern is to **fire off slow work** (network calls, disk I/O, background processing) in goroutines so the main flow continues without blocking.
+
+* Goroutines solve the same *class* of problems as async code in JavaScript: **non-blocking progress**.
+
+* JavaScript uses a **single-threaded event loop** model:
+
+  * Only **one thread** executes JavaScript code.
+  * `async / await` does **not** create new threads.
+  * `await` means: *pause this function and give control back to the event loop*.
+
+* When a JavaScript function hits `await`:
+
+  * The function’s execution is **paused**.
+  * The rest of that function (the “next line”) is **not executed yet**.
+  * The engine stores the continuation of the function.
+  * The single JS thread is now free to run:
+
+    * other event handlers
+    * timers
+    * promise callbacks
+    * remaining top-level code
+
+* Later, when the awaited operation completes, the event loop schedules the continuation of the paused function.
+
+* This explains a key JS concept:
+
+  * The thread is **busy**, but not **blocked**.
+  * Other tasks run, but **not the next line of the same function**.
+
+* `await` therefore enforces **function-level blocking**, not **thread-level blocking**.
+
+* Conceptual mapping between Go and JavaScript:
+
+  * `go f()` in Go ≈ “schedule work and don’t wait”
+  * `await f()` in JS ≈ “pause here until done”
+  * calling `f()` directly in Go ≈ synchronous execution
+
+* Goroutines are **not OS threads**:
+
+  * They are “green threads” managed by the Go runtime.
+  * The runtime multiplexes many goroutines onto fewer OS threads.
+
+* Go controls parallelism with `GOMAXPROCS`:
+
+  * If `GOMAXPROCS = 1`, all goroutines run on one OS thread:
+
+    * concurrency without parallelism
+  * If `GOMAXPROCS > 1` (default on multi-core machines):
+
+    * goroutines may run in true parallel on multiple cores
+
+* This leads to a crucial distinction:
+
+  * JavaScript is **fundamentally single-threaded** for user code.
+  * Go can scale from single-threaded concurrency to multi-core parallelism **without changing code**.
+
+* Final mental model:
+
+  * JavaScript concurrency = *event-loop-driven task switching*
+  * Go concurrency = *runtime-scheduled goroutines*
+  * Parallelism depends on hardware, but concurrency depends on program structure

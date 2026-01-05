@@ -18,11 +18,69 @@
 
 * Final mental model:
   * JavaScript concurrency = *event-loop-driven task switching*
+      - Event-loop is a scheduler that lets JS **pause** functions at `await`, `fetch` (because they are **handed off** to the browser or runtime(the host environment that embeds the JS engine), not JS engine itself, like V8 in Chrome), run other queued work on the same thread and resume paused functions later
+      - For example, when we do fetch(...) or set a timer, the JS engine does not implement TCP, DNS, TLS, or timer interrupts. Instead, it requests: “runtime, start this operation and tell me when it’s done.” The runtime performs the operation (often using OS mechanisms) and later signals completion back to the JS engine by placing a callback/continuation into a queue.
+        * Scenario: user clicks a button while a network request is in flight.
+  * Flow:
+
+    * JS starts running:
+
+      * `await fetch(...)` begins the network request.
+      * The async request is handled by the browser network stack (not the JS engine).
+      * The async function pauses at `await`.
+    * The JS thread becomes free and the event loop can now run other queued tasks.
+    * User clicks the page:
+
+      * The click event handler is queued.
+      * The event loop runs the click handler on the same JS thread.
+    * Later, the fetch completes:
+
+      * The runtime queues the continuation (“resume after await”).
+      * The event loop eventually runs that continuation, and your async function continues on the next line.
   * Go concurrency = *runtime-scheduled goroutines*
   * Parallelism depends on hardware, but concurrency depends on program structure
+## Threads
+What *is* true:
+
+* At any **instant**, a single **core** can execute **one instruction stream**.
+* That instruction stream belongs to **one thread** at that moment.
+
+* If you have:
+
+  * 4 cores
+  * 100 threads
+* At most **4 threads** can run **at the same time**.
+* The OS scheduler:
+
+  * runs some threads
+  * pauses them
+  * resumes others
+  * possibly on different cores
+
+> A thread is an instruction stream; a CPU core executes one instruction stream at a time, and the OS dynamically schedules threads onto cores, so there is no permanent 1:1 mapping.
+
+* **Single core**:
+
+  * Executes **one** instruction stream at a time
+  * Appears concurrent via **rapid switching**
+* **Multiple cores**:
+
+  * Each core executes its **own** instruction stream
+  * True parallelism occurs
+
+Example:
+
+* 4 cores → up to 4 instruction streams truly parallel
+* More threads than cores → time slicing
 
 ## Goroutines
-
+```
+Goroutines
+   ↓ (Go runtime scheduler)
+OS Threads (instruction streams)
+   ↓ (OS scheduler)
+CPU Cores
+```
 * Go was designed with concurrency as a **core language feature**, not a library add-on.
 
 * Concurrency in Go is expressed using the `go` keyword:

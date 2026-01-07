@@ -37,7 +37,7 @@
 
       * The runtime queues the continuation (“resume after await”).
       * The event loop eventually runs that continuation, and your async function continues on the next line.
-  * Go concurrency = *runtime-scheduled goroutines*
+  * Go concurrency = *runtime-scheduled goroutines(In Go, every executing function runs in a goroutine)*
   * Parallelism depends on hardware, but concurrency depends on program structure
 ## Threads
 What *is* true:
@@ -84,7 +84,8 @@ CPU Cores
 * Go was designed with concurrency as a **core language feature**, not a library add-on.
 
 * Concurrency in Go is expressed using the `go` keyword:
-
+  * Start a new goroutine in addition to the current one (every executing function ultimately runs in a goroutine.).
+  * In Go, all code runs in goroutines; go doesn’t create concurrency from nothing — it creates additional goroutines alongside the one already running.
   * `go f()` means: *start this function concurrently and do not wait for it here*.
 
 * Using `go` spawns a **goroutine**, which is:
@@ -277,6 +278,16 @@ Key distinction:
 ### One Sentence That Usually Makes It Click
 
 > In concurrent code, “return” answers “what is the result?” Channels answer “when is it safe to continue?”
+
+It doesn't not mean:
+
+ >“When does the next line execute?”
+
+That already happened.
+
+It means:
+
+ > When is it safe to proceed with some later dependent action (another goroutine) that requires the concurrent work to be finished (or partially finished)?
 
 Forget the syntax for a moment:
 
